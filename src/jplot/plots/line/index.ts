@@ -3,30 +3,53 @@ import { remap } from '../../math/remap';
 import { clamp } from '../../math/clamp';
 import { VEC2 } from '../../math/vector';
 import { bzCurve, lineSegment, lineSegments } from '../../utils/drawing/curve';
-import { LinePlotFunction } from './types';
+import { EMergeMethod, LinePlotFunction } from './types';
 import { closestPoint } from '../../math/vectorUtils';
 
 const defaultFormat = (n: number | string): string =>
   typeof n === 'number' ? n.toFixed(3) : n + '';
 
 
-const combine = (keys: string[], values: number[], fmt: (x: string) => string): [string[], number[]] => {
+const combine = (keys: string[], values: number[], fmt: (x: string) => string, mergeMethod: EMergeMethod): [string[], number[]] => {
   if (keys.length !== values.length) return [keys, values];
 
-  const dict: {[key: string]: number} = unique(keys).reduce((prev, cur) => {
-    return {
-      ...prev,
-      [fmt(cur)]: 0
+  if (mergeMethod === EMergeMethod.SUM) {
+    const dict: {[key: string]: number} = unique(keys).reduce((prev, cur) => {
+      return {
+        ...prev,
+        [fmt(cur)]: 0
+      }
+    }, {} as {[key: string]: number});
+
+    for (let i = 0; i < keys.length; i++) {
+      const key = fmt(keys[i]);
+      const value = values[clamp(i, 0, values.length-1)];
+      dict[key] += value;
     }
-  }, {} as {[key: string]: number});
 
-  for (let i = 0; i < keys.length; i++) {
-    const key = fmt(keys[i]);
-    const value = values[clamp(i, 0, values.length-1)];
-    dict[key] += value;
+    return [Object.keys(dict), Object.values(dict)];
+  } else {
+    const dict: {[key: string]: { value: number, count: number }} = unique(keys).reduce((prev, cur) => {
+      return {
+        ...prev,
+        [fmt(cur)]: {
+          value: 0,
+          count: 0
+        }
+      }
+    }, {} as {[key: string]: { value: number, count: number }});
+
+    for (let i = 0; i < keys.length; i++) {
+      const key = fmt(keys[i]);
+      const value = values[clamp(i, 0, values.length-1)];
+      dict[key].value += value;
+      dict[key].count += 1;
+    }
+
+    const nextValues = Object.values(dict).map(it => it.value / Math.max(1, it.count))
+
+    return [Object.keys(dict), nextValues];
   }
-
-  return [Object.keys(dict), Object.values(dict)];
 }
 
 export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
@@ -45,8 +68,14 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
     const formatX = lineConfig.xAxis?.format || defaultFormat;
     const formatY = lineConfig.yAxis?.format || defaultFormat;
 
+    const dataset = config.datasets[0];
+
+    const keys = dataset.keys;//lineConfig.xAxis?.unique ? unique(dataset.keys) : dataset.keys;
+    let [xValues, yValues] = lineConfig.mergeDuplicates ? combine(keys, dataset.values, formatX, lineConfig.mergeMethod || EMergeMethod.SUM) : [keys.map(formatX), dataset.values];
+    if (lineConfig.xAxis?.unique) xValues = unique(xValues);
+
     const verticalPadding = 48;
-    const paddingLeft = 64;
+    const paddingLeft = xValues.length <= 1 ? 0 : 64;
     const plotHeight = canvas.height - verticalPadding * 2;
     const plotWidth = canvas.width - paddingLeft;
 
@@ -60,11 +89,7 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
       Math.max(canvas.height, canvas.width);
     const cursorRadius = 8 * rds * (lineConfig.cursor?.scale || 1);
 
-    const dataset = config.datasets[0];
 
-    const keys = lineConfig.xAxis?.unique ? unique(dataset.keys) : dataset.keys;
-    let [xValues, yValues] = lineConfig.mergeDuplicates ? combine(keys, dataset.values, formatX) : [keys.map(formatX), dataset.values];
-    if (lineConfig.xAxis?.unique) xValues = unique(xValues);
 
     //const xValues = dataset.keys;
     //const yValues = dataset.values;
@@ -96,14 +121,14 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
     let xTickLabels = xTickValues;//.map(formatX);
 
 
-    //let lastPointFix: boolean = false;
-    //if (xValues.length >= 3) {
-    //  const lastLabel = xValues[xValues.length-1];
-    //  if (!xTickLabels.includes(lastLabel)) {
-    //    xTickLabels.push(lastLabel);
-    //    lastPointFix = true;
-    //  }
-    //}
+    let lastPointFix: boolean = false;
+    if (xValues.length >= 3) {
+      const lastLabel = xValues[xValues.length-1];
+      if (!xTickLabels.includes(lastLabel)) {
+        xTickLabels.push(lastLabel);
+        lastPointFix = true;
+      }
+    }
 
     const points = [
       VEC2(paddingLeft, plotHeight + verticalPadding),
@@ -121,9 +146,9 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
       let x = points[remapToIndex(i, 0, xTickLabels.length, points.length)].x; //paddingLeft + plotWidth * (i / xTickLabels.length);
       const y = canvas.height - verticalPadding / 2;
 
-      //if (lastPointFix && i >= xTickLabels.length-1) {
-      //  x = plotWidth + paddingLeft;
-      //}
+      if (lastPointFix && i >= xTickLabels.length-1) {
+        x = plotWidth + paddingLeft;
+      }
 
       return VEC2(x, y);
     });
@@ -136,25 +161,29 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
       return VEC2(x, y);
     });
 
-    // draw y-axis lines
-    yAxisPoints.forEach((p, i) => {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(plotWidth + paddingLeft, p.y);
-      ctx.closePath();
-      ctx.stroke();
-    });
+    if (lineConfig.yAxis?.drawLines) {
+      // draw y-axis lines
+      yAxisPoints.forEach((p, i) => {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(plotWidth + paddingLeft, p.y);
+        ctx.closePath();
+        ctx.stroke();
+      });
+    }
 
-    // draw x-axis lines
-    xAxisPoints.forEach((p, i) => {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x, plotHeight - p.y);
-      ctx.closePath();
-      ctx.stroke();
-    });
+    if (lineConfig.xAxis?.drawLines) {
+      // draw x-axis lines
+      xAxisPoints.forEach((p, i) => {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x, plotHeight - p.y);
+        ctx.closePath();
+        ctx.stroke();
+      });
+    }
 
     switch (true) {
       case !!lineConfig.fill:
@@ -184,17 +213,19 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
       case !!lineConfig.stroke:
         {
           ctx.strokeStyle = lineConfig.stroke?.color || 'black';
+          ctx.lineWidth = lineConfig.stroke?.width || 1;
           lineConfig.curve
             ? bzCurve(ctx, points, lineConfig.curve.f, lineConfig.curve.t)
             : lineSegments(ctx, points);
           ctx.stroke();
+          ctx.lineWidth = 1;
         }
         break;
     }
 
     // draw y-axis labels
     yAxisPoints.forEach((p, i) => {
-      ctx.fillStyle = 'black';
+      ctx.fillStyle = config.styling?.textColor || 'black';
       ctx.beginPath();
       ctx.fillText(yTickLabels[i], p.x, p.y);
       ctx.closePath();
@@ -211,7 +242,7 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
 
       x = clamp(x, 0, canvas.width - m.width);
 
-      ctx.fillStyle = 'black';
+      ctx.fillStyle = config.styling?.textColor || 'black';
       ctx.beginPath();
       ctx.fillText(xTickLabels[i], x, p.y);
       ctx.closePath();
@@ -242,7 +273,7 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
       return clamp(index, 1, Math.max(points.length - 2, 1));
     };
 
-    const mx = (args.state.mouse.position.x - rect.x) / rect.width;
+    //const mx = (args.state.mouse.position.x - rect.x) / rect.width;
     const keyIndex = getKeyIndexAtX(mouseLocal.x, 0); //clamp(Math.floor(mx * xValues.length), 0, xValues.length-1);
     const valueIndex = getValueIndexAtX(mouseLocal.x, 0);
     const pointIndex = getPointIndexAtX(mouseLocal.x, 0);
@@ -259,7 +290,7 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
     const nextTooltipPos = prevTooltipPos.lerp(
       point
         .mul(args.state.dimensions.ratioInverse)
-        .add(VEC2(rect.x, rect.y - 16)),
+        .add(VEC2(rect.x, rect.y - 16)).add(VEC2(0, -(32+(2*cursorRadius)+(0.5*args.state.tooltip.rect.height)))),
       clamp(args.app.state.time.delta * 8, 0, 1),
     );
     prevTooltipPos = nextTooltipPos;
@@ -274,7 +305,7 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
     if (args.hooks) {
       const { onDataHover } = args.hooks;
       if (onDataHover) {
-        onDataHover(args.app, xValues[keyIndex], yValues[valueIndex]);
+        onDataHover(args.app, xValues[keyIndex], yValues[valueIndex], valueIndex);
       }
     }
   };

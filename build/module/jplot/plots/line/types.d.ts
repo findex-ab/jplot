@@ -17,11 +17,16 @@ export type PlotAxis = {
     format?: (value: string | number) => string;
     unique?: boolean;
     centerLabels?: boolean;
+    drawLines?: boolean;
 };
 export type LinePlotCursorConfig = {
     scale?: number;
     color?: string;
 };
+export declare enum EMergeMethod {
+    AVERAGE = "AVERAGE",
+    SUM = "SUM"
+}
 export type LinePlotConfig = {
     stroke?: LinePlotStrokeConfig;
     fill?: LinePlotFillConfig;
@@ -30,5 +35,6 @@ export type LinePlotConfig = {
     yAxis?: PlotAxis;
     cursor?: LinePlotCursorConfig;
     mergeDuplicates?: boolean;
+    mergeMethod?: EMergeMethod;
 };
 export type LinePlotFunction = (config: LinePlotConfig) => PlotFunction;

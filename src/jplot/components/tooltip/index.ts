@@ -45,7 +45,7 @@ export const Tooltip = (args: TooltipPropsInternal) => X<TooltipPropsInternal, T
         X('div', {
           cname: 'tooltip-sheet',
           stylesheet: {
-            padding: '0.25rem',
+            //padding: '0.25rem',
             position: 'relative',
             width: 'fit-content',
             height: 'fit-content',
@@ -68,6 +68,9 @@ export const Tooltip = (args: TooltipPropsInternal) => X<TooltipPropsInternal, T
             }
           },
           children: [X('div', {
+            style: {
+              width: 'fit-content'
+            },
             render() {
               return state.body || state.text || 'hello world'
             }

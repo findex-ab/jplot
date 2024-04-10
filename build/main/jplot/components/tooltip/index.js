@@ -38,7 +38,7 @@ const Tooltip = (args) => (0, xel_1.X)('div', {
                 (0, xel_1.X)('div', {
                     cname: 'tooltip-sheet',
                     stylesheet: {
-                        padding: '0.25rem',
+                        //padding: '0.25rem',
                         position: 'relative',
                         width: 'fit-content',
                         height: 'fit-content',
@@ -61,6 +61,9 @@ const Tooltip = (args) => (0, xel_1.X)('div', {
                         }
                     },
                     children: [(0, xel_1.X)('div', {
+                            style: {
+                                width: 'fit-content'
+                            },
                             render() {
                                 return state.body || state.text || 'hello world';
                             }

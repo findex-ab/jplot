@@ -41,6 +41,7 @@ const plot = (config) => {
         tooltip: {
             xel: undefined,
             position: (0, vector_1.VEC2)(0, 0),
+            rect: { width: 0, height: 0 }
         },
         animationId: null,
         loading: true
@@ -111,6 +112,11 @@ const plot = (config) => {
     const updateTooltip = () => {
         tooltip.state.position = state.tooltip.position;
         tooltip.state.body = state.tooltip.body;
+        if (tooltip.el) {
+            const el = tooltip.el;
+            const tooltipRect = el.getBoundingClientRect();
+            state.tooltip.rect = tooltipRect;
+        }
     };
     let lastCheck = 0;
     const everySecond = () => {

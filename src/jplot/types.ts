@@ -28,11 +28,12 @@ export type PlotFunction = (args: PlotArguments) => PlotUpdateFunction;
 // ----------------------------------------------------------
 
 export type PlotAppConfigHooks = {
-  onDataHover: (app: PlotApp, key: string, value: number) => void;
+  onDataHover: (app: PlotApp, key: string, value: number, index: number) => void;
 }
 
 export type PlotAppStylingConfig = {
   font?: string;
+  textColor?: string;
 }
 
 export type PlotAppConfig = PlotConfig & {
@@ -65,6 +66,7 @@ export type PlotAppStateDimensions = {
 export type PlotAppStateTooltip = Partial<TooltipProps> & {
   xel?: XElement;
   position: Vector;
+  rect: { width: number, height: number  }
 }
 
 export type PlotAppState = {
