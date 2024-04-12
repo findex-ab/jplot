@@ -29,7 +29,7 @@
     "prepare-release": "run-s reset-hard test cov:check doc:html version doc:publish"
   },
   "engines": {
-    "node": ">=21"
+    "node": ">=18"
   },
   "files": [
     "build/main",
