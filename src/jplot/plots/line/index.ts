@@ -54,6 +54,7 @@ const combine = (keys: string[], values: number[], fmt: (x: string) => string, m
 
 export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
   let prevTooltipPos = args.state.tooltip.position;
+  let lastHoverIndex: number = -1;
 
   return (args) => {
     const { canvas, config } = args;
@@ -121,34 +122,36 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
     let xTickLabels = xTickValues;//.map(formatX);
 
 
-    let lastPointFix: boolean = false;
-    if (xValues.length >= 3) {
-      const lastLabel = xValues[xValues.length-1];
-      if (!xTickLabels.includes(lastLabel)) {
-        xTickLabels.push(lastLabel);
-        lastPointFix = true;
-      }
-    }
+    //let lastPointFix: boolean = false;
+    //if (xValues.length >= 3) {
+    //  const lastLabel = xValues[xValues.length-1];
+    //  if (!xTickLabels.includes(lastLabel)) {
+    //    xTickLabels.push(lastLabel);
+    //    lastPointFix = true;
+    //  }
+    //}
 
-    const points = [
-      VEC2(paddingLeft, plotHeight + verticalPadding),
-      ...yValues.map((value, i) => {
-        const y =
-          verticalPadding +
-          (plotHeight - ((value - minValue) / valueRange) * plotHeight);
-        const x = paddingLeft + i * (plotWidth / (yValues.length - 1));
-        return VEC2(x, y);
-      }),
-      VEC2(plotWidth + paddingLeft, plotHeight + verticalPadding),
-    ];
+    let pointsStartIndex = 0;
+    let points = yValues.map((value, i) => {
+      const y =
+        verticalPadding +
+        (plotHeight - ((value - minValue) / valueRange) * plotHeight);
+      const x = paddingLeft + i * (plotWidth / (yValues.length - 1));
+      return VEC2(x, y);
+    });
+
+    if (!lineConfig.stroke) {
+      pointsStartIndex = 1;
+      points = [VEC2(paddingLeft, plotHeight + verticalPadding), ...points, VEC2(plotWidth + paddingLeft, plotHeight + verticalPadding)]
+    }
 
     const xAxisPoints = xTickLabels.map((_, i) => {
       let x = points[remapToIndex(i, 0, xTickLabels.length, points.length)].x; //paddingLeft + plotWidth * (i / xTickLabels.length);
       const y = canvas.height - verticalPadding / 2;
 
-      if (lastPointFix && i >= xTickLabels.length-1) {
-        x = plotWidth + paddingLeft;
-      }
+      //if (lastPointFix && i >= xTickLabels.length-1) {
+      //  x = plotWidth + paddingLeft;
+      //}
 
       return VEC2(x, y);
     });
@@ -179,7 +182,7 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x, plotHeight - p.y);
+        ctx.lineTo(p.x, p.y - (lineConfig.xAxis?.lineHeightMinimal ? (verticalPadding / 2) : (lineConfig.xAxis?.lineHeight ?? (plotHeight + verticalPadding))));
         ctx.closePath();
         ctx.stroke();
       });
@@ -231,6 +234,22 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
       ctx.closePath();
     });
 
+   // if (xValues.length > 0 && xAxisPoints.length >= 0) {
+   //   const lastLabel = xValues[xValues.length-1];
+   //   let p = xAxisPoints[xAxisPoints.length-1].clone();
+   //   p.x = plotWidth + paddingLeft;
+   //   if (!xTickLabels.includes(lastLabel)) {
+   //     ctx.fillStyle = config.styling?.textColor || 'black';
+
+   //     const m = ctx.measureText(lastLabel);
+   //     p.x -= m.width;
+
+   //     ctx.beginPath();
+   //     ctx.fillText(lastLabel, p.x, p.y);
+   //     ctx.closePath();
+   //   }
+   // }
+
     // draw x-axis labels
     xAxisPoints.forEach((p, i) => {
       let x = p.x;
@@ -270,7 +289,7 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
     const getPointIndexAtX = (x: number, xMin: number) => {
       const remapped = x - xMin - (0 + paddingLeft); // Adjust for padding
       const index = Math.round((remapped / plotWidth) * (points.length - 1));
-      return clamp(index, 1, Math.max(points.length - 2, 1));
+      return clamp(index,pointsStartIndex, Math.max(points.length - (1 + pointsStartIndex), pointsStartIndex));
     };
 
     //const mx = (args.state.mouse.position.x - rect.x) / rect.width;
@@ -305,7 +324,10 @@ export const linePlot: LinePlotFunction = (lineConfig) => (args) => {
     if (args.hooks) {
       const { onDataHover } = args.hooks;
       if (onDataHover) {
-        onDataHover(args.app, xValues[keyIndex], yValues[valueIndex], valueIndex);
+        if (valueIndex !== lastHoverIndex) {
+          onDataHover(args.app, xValues[keyIndex], yValues[valueIndex], valueIndex);
+          lastHoverIndex = valueIndex;
+        }
       }
     }
   };

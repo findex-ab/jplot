@@ -39,7 +39,8 @@ export const Tooltip = (args: TooltipPropsInternal) => X<TooltipPropsInternal, T
         minHeight: pxToRemStr(minHeight),
         background: 'white',
         userSelect: 'none',
-        opacity: `${state.opacity * 100.0}%`
+        opacity: `${state.opacity * 100.0}%`,
+        pointerEvents: 'none'
       },
       children: [
         X('div', {
@@ -69,7 +70,8 @@ export const Tooltip = (args: TooltipPropsInternal) => X<TooltipPropsInternal, T
           },
           children: [X('div', {
             style: {
-              width: 'fit-content'
+              width: 'fit-content',
+              pointerEvents: 'none'
             },
             render() {
               return state.body || state.text || 'hello world'

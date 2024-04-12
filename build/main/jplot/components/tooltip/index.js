@@ -33,7 +33,8 @@ const Tooltip = (args) => (0, xel_1.X)('div', {
                 minHeight: (0, style_1.pxToRemStr)(minHeight),
                 background: 'white',
                 userSelect: 'none',
-                opacity: `${state.opacity * 100.0}%`
+                opacity: `${state.opacity * 100.0}%`,
+                pointerEvents: 'none'
             }, children: [
                 (0, xel_1.X)('div', {
                     cname: 'tooltip-sheet',
@@ -62,7 +63,8 @@ const Tooltip = (args) => (0, xel_1.X)('div', {
                     },
                     children: [(0, xel_1.X)('div', {
                             style: {
-                                width: 'fit-content'
+                                width: 'fit-content',
+                                pointerEvents: 'none'
                             },
                             render() {
                                 return state.body || state.text || 'hello world';

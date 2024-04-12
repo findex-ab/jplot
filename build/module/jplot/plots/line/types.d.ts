@@ -18,6 +18,8 @@ export type PlotAxis = {
     unique?: boolean;
     centerLabels?: boolean;
     drawLines?: boolean;
+    lineHeight?: number;
+    lineHeightMinimal?: boolean;
 };
 export type LinePlotCursorConfig = {
     scale?: number;
