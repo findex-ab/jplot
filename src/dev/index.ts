@@ -10,7 +10,7 @@ const canvas = document.getElementById('canvas') as HTMLCanvasElement;
 
 const CHARS = Array.from('abcdefghijklmnopqrstuvwxyz');
 
-const SEED = performance.now() + Math.random();
+const SEED = 2011095;//performance.now() + Math.random();
 const N = 160;
 const F = 2.3123;
 
@@ -22,42 +22,37 @@ const main = () => {
   //canvas.height = rect.height;
 
   const dataItems = range(N).map((i) => ({
-    key: CHARS[i % CHARS.length],
+    key: CHARS[0],
     value: octNoise(0.03818718 + F * (i / N), F, 4, SEED),
   }));
 
   const TICK_COUNT = 9; //Math.round(lerp(16, 32, 0.5+0.5*Math.sin(time/500.0)));
 
-  const width = 512 * 2;
-  const height = (width / 16) * 10; // / 16 * 9;// / 16 * 9;
+  const width = 640;
+  const height = width / 16 * 9;
 
   const { root } = plot({
     hooks: {
       onDataHover: (app, key, value) => {
         app.setState((s) => {
           s.tooltip.body = X('div', {
-            children: [
-              X('div', {
-                style: { fontWeight: 'bold', fontFamily: 'sans-serif' },
-                innerText: key,
-              }),
-              X('div', {
-                style: {
-                  fontFamily: 'sans-serif',
-                  marginTop: '0.5rem',
-                  width: '100%',
-                },
-                innerText: value,
-              }),
-            ],
+            render() {
+              return X('div', {
+                children: [
+                  X('div', { style: { fontWeight: 'bold', fontFamily: 'sans-serif' }, innerText: key }),
+                  X('div', { style: { fontFamily: 'sans-serif' }, innerText: value })
+                ]
+              });
+            }
           });
           return s;
         });
       },
     },
     canvasSize: { x: width, y: height },
-    canvasResolution: { x: width, y: height },
+    canvasResolution: { x: width * 2, y: height * 2 },
     plot: linePlot({
+      mergeDuplicates: true,
       fill: {
         colorStops: [
           { stop: 0.0, color: 'red' },
@@ -69,6 +64,7 @@ const main = () => {
       },
       yAxis: {
         tickCount: TICK_COUNT,
+        startAtZero: true
       },
     }),
     datasets: [
@@ -79,7 +75,19 @@ const main = () => {
     ],
   });
 
-  mount(root, { target: document.getElementById('app') });
+
+  const App = X('div', {
+    style: {
+      width: `fit-content`,
+      height: `fit-content`
+    },
+    render() {
+      return root;
+    }
+  })
+
+
+  mount(App, { target: document.getElementById('app') });
 };
 
 main();

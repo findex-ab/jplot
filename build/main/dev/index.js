@@ -7,7 +7,7 @@ const noise_1 = require("../jplot/utils/noise");
 const xel_1 = require("xel");
 const canvas = document.getElementById('canvas');
 const CHARS = Array.from('abcdefghijklmnopqrstuvwxyz');
-const SEED = performance.now() + Math.random();
+const SEED = 2011095; //performance.now() + Math.random();
 const N = 160;
 const F = 2.3123;
 const main = () => {
@@ -17,39 +17,34 @@ const main = () => {
     //canvas.width = rect.width;
     //canvas.height = rect.height;
     const dataItems = (0, array_1.range)(N).map((i) => ({
-        key: CHARS[i % CHARS.length],
+        key: CHARS[0],
         value: (0, noise_1.octNoise)(0.03818718 + F * (i / N), F, 4, SEED),
     }));
     const TICK_COUNT = 9; //Math.round(lerp(16, 32, 0.5+0.5*Math.sin(time/500.0)));
-    const width = 512 * 2;
-    const height = (width / 16) * 10; // / 16 * 9;// / 16 * 9;
+    const width = 640;
+    const height = width / 16 * 9;
     const { root } = (0, plot_1.plot)({
         hooks: {
             onDataHover: (app, key, value) => {
                 app.setState((s) => {
                     s.tooltip.body = (0, xel_1.X)('div', {
-                        children: [
-                            (0, xel_1.X)('div', {
-                                style: { fontWeight: 'bold', fontFamily: 'sans-serif' },
-                                innerText: key,
-                            }),
-                            (0, xel_1.X)('div', {
-                                style: {
-                                    fontFamily: 'sans-serif',
-                                    marginTop: '0.5rem',
-                                    width: '100%',
-                                },
-                                innerText: value,
-                            }),
-                        ],
+                        render() {
+                            return (0, xel_1.X)('div', {
+                                children: [
+                                    (0, xel_1.X)('div', { style: { fontWeight: 'bold', fontFamily: 'sans-serif' }, innerText: key }),
+                                    (0, xel_1.X)('div', { style: { fontFamily: 'sans-serif' }, innerText: value })
+                                ]
+                            });
+                        }
                     });
                     return s;
                 });
             },
         },
         canvasSize: { x: width, y: height },
-        canvasResolution: { x: width, y: height },
+        canvasResolution: { x: width * 2, y: height * 2 },
         plot: (0, line_1.linePlot)({
+            mergeDuplicates: true,
             fill: {
                 colorStops: [
                     { stop: 0.0, color: 'red' },
@@ -61,6 +56,7 @@ const main = () => {
             },
             yAxis: {
                 tickCount: TICK_COUNT,
+                startAtZero: true
             },
         }),
         datasets: [
@@ -70,6 +66,15 @@ const main = () => {
             },
         ],
     });
-    (0, xel_1.mount)(root, { target: document.getElementById('app') });
+    const App = (0, xel_1.X)('div', {
+        style: {
+            width: `fit-content`,
+            height: `fit-content`
+        },
+        render() {
+            return root;
+        }
+    });
+    (0, xel_1.mount)(App, { target: document.getElementById('app') });
 };
 main();

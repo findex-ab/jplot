@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.plot = void 0;
 const vector_1 = require("./math/vector");
+const is_1 = require("./utils/is");
 const tooltip_1 = require("./components/tooltip");
 const xel_1 = require("xel");
 const useState_1 = require("./utils/reactivity/useState");
@@ -89,21 +90,23 @@ const plot = (config) => {
         const parent = canvas.parentElement;
         if (!parent)
             return;
-        //if (config.canvasResolution) {
-        //  state.canvas.width = config.canvasResolution.x;
-        //  state.canvas.height = config.canvasResolution.y;
-        //}
-        //if (config.canvasSize) {
-        //  if (isNumber(config.canvasSize.x))
-        //    state.canvas.style.width = `${config.canvasSize.x}px`;
-        //  else state.canvas.style.width = config.canvasSize.x;
-        //  if (isNumber(config.canvasSize.y))
-        //    state.canvas.style.height = `${config.canvasSize.y}px`;
-        //  else state.canvas.style.height = config.canvasSize.y;
-        //}
-        const rect = parent.getBoundingClientRect();
+        if (config.canvasSize) {
+            if ((0, is_1.isNumber)(config.canvasSize.x))
+                state.canvas.style.width = `${config.canvasSize.x}px`;
+            else
+                state.canvas.style.width = config.canvasSize.x;
+            if ((0, is_1.isNumber)(config.canvasSize.y))
+                state.canvas.style.height = `${config.canvasSize.y}px`;
+            else
+                state.canvas.style.height = config.canvasSize.y;
+        }
+        const rect = config.fitParent ? parent.getBoundingClientRect() : canvas.getBoundingClientRect();
         state.canvas.width = (0, clamp_1.clamp)(rect.width, 1, window.innerWidth);
         state.canvas.height = (0, clamp_1.clamp)(rect.height, 1, window.innerHeight);
+        if (config.canvasResolution && !config.fitParent) {
+            state.canvas.width = config.canvasResolution.x;
+            state.canvas.height = config.canvasResolution.y;
+        }
         const rx = state.canvas.width / Math.max(1, rect.width);
         const ry = state.canvas.height / Math.max(1, rect.height);
         state.dimensions.ratio = (0, vector_1.VEC2)(rx, ry);

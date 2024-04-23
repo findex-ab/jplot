@@ -20,6 +20,7 @@ export type PlotAxis = {
     drawLines?: boolean;
     lineHeight?: number;
     lineHeightMinimal?: boolean;
+    startAtZero?: boolean;
 };
 export type LinePlotCursorConfig = {
     scale?: number;

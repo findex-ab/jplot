@@ -17,7 +17,7 @@ const combine = (keys, values, fmt, mergeMethod) => {
         for (let i = 0; i < keys.length; i++) {
             const key = fmt(keys[i]);
             const value = values[clamp(i, 0, values.length - 1)];
-            dict[key] += value;
+            dict[key] = (dict[key] || 0) + value;
         }
         return [Object.keys(dict), Object.values(dict)];
     }
@@ -34,10 +34,10 @@ const combine = (keys, values, fmt, mergeMethod) => {
         for (let i = 0; i < keys.length; i++) {
             const key = fmt(keys[i]);
             const value = values[clamp(i, 0, values.length - 1)];
-            dict[key].value += value;
-            dict[key].count += 1;
+            dict[key].value = (dict[key].value || 0) + value;
+            dict[key].count = (dict[key].count || 0) + 1;
         }
-        const nextValues = Object.values(dict).map(it => it.value / Math.max(1, it.count));
+        const nextValues = Object.values(dict).map(it => (it.value || 0) / Math.max(1, it.count || 1));
         return [Object.keys(dict), nextValues];
     }
 };
@@ -52,14 +52,18 @@ export const linePlot = (lineConfig) => (args) => {
         if (!ctx)
             return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const dataset = config.datasets[0];
+        const startAtZero = (!!lineConfig.yAxis?.startAtZero) && (Math.abs(Math.min(...(dataset.values || []))) > 0.001);
         ctx.font = config.styling?.font || '1rem Sans-Serif';
         const formatX = lineConfig.xAxis?.format || defaultFormat;
         const formatY = lineConfig.yAxis?.format || defaultFormat;
-        const dataset = config.datasets[0];
         const keys = dataset.keys; //lineConfig.xAxis?.unique ? unique(dataset.keys) : dataset.keys;
         let [xValues, yValues] = lineConfig.mergeDuplicates ? combine(keys, dataset.values, formatX, lineConfig.mergeMethod || EMergeMethod.SUM) : [keys.map(formatX), dataset.values];
+        const originalLength = yValues.length;
         if (lineConfig.xAxis?.unique)
             xValues = unique(xValues);
+        if (startAtZero && yValues.length > 1)
+            yValues = [0, ...yValues];
         const verticalPadding = 48;
         const paddingLeft = xValues.length <= 1 ? 0 : 64;
         const plotHeight = canvas.height - verticalPadding * 2;
@@ -78,7 +82,7 @@ export const linePlot = (lineConfig) => (args) => {
         const minValue = Math.min(...yValues);
         const maxValue = Math.max(...yValues);
         const valueRange = maxValue - minValue;
-        const yAxisInterval = valueRange / (yTickCount - 1);
+        const yAxisInterval = valueRange / Math.max(1, yTickCount - 1);
         const yTickValues = range(yTickCount).map((i) => minValue + yAxisInterval * i);
         const xTickValues = range(xTickCount).map((i) => xValues[remapToIndex(i, 0, xTickCount, xValues.length)]);
         const yTickLabels = yTickValues.map(formatY);
@@ -101,6 +105,11 @@ export const linePlot = (lineConfig) => (args) => {
         if (!lineConfig.stroke) {
             pointsStartIndex = 1;
             points = [VEC2(paddingLeft, plotHeight + verticalPadding), ...points, VEC2(plotWidth + paddingLeft, plotHeight + verticalPadding)];
+            if (yValues.length === 1) {
+                points[1].y = verticalPadding * 0.5;
+                points[points.length - 1].y = verticalPadding * 0.5;
+                points.push(VEC2(plotWidth + paddingLeft, plotHeight + verticalPadding));
+            }
         }
         const xAxisPoints = xTickLabels.map((_, i) => {
             let x = points[remapToIndex(i, 0, xTickLabels.length, points.length)].x; //paddingLeft + plotWidth * (i / xTickLabels.length);
@@ -173,7 +182,7 @@ export const linePlot = (lineConfig) => (args) => {
         yAxisPoints.forEach((p, i) => {
             ctx.fillStyle = config.styling?.textColor || 'black';
             ctx.beginPath();
-            ctx.fillText(yTickLabels[i], p.x, p.y);
+            ctx.fillText(yTickLabels[clamp(i, 0, yTickLabels.length - 1)], p.x, p.y);
             ctx.closePath();
         });
         // if (xValues.length > 0 && xAxisPoints.length >= 0) {
@@ -203,15 +212,15 @@ export const linePlot = (lineConfig) => (args) => {
             ctx.closePath();
         });
         // mouse
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        ctx.beginPath();
-        ctx.arc(mouseLocal.x, mouseLocal.y, cursorRadius, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.fill();
+        // ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        // ctx.beginPath();
+        // ctx.arc(mouseLocal.x, mouseLocal.y, cursorRadius, 0, Math.PI * 2);
+        // ctx.closePath();
+        // ctx.fill();
         const getValueIndexAtX = (x, xMin) => {
             const remapped = x - xMin - (0 + paddingLeft); // Adjust for padding
             const index = Math.round((remapped / plotWidth) * (yValues.length - 1));
-            return clamp(index, 0, yValues.length - 1);
+            return clamp(index, 0, originalLength - 1);
         };
         const getKeyIndexAtX = (x, xMin) => {
             const remapped = x - xMin - (0 + paddingLeft); // Adjust for padding
