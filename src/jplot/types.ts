@@ -49,6 +49,7 @@ export type PlotAppConfig = PlotConfig & {
 export type PlotAppStateMouse = {
   position: Vector;
   localPosition: Vector;
+  intersects: boolean;
 }
 
 export type PlotAppStateTime = {
@@ -66,7 +67,8 @@ export type PlotAppStateDimensions = {
 export type PlotAppStateTooltip = Partial<TooltipProps> & {
   xel?: XElement;
   position: Vector;
-  rect: { width: number, height: number  }
+  rect: { width: number, height: number  };
+  visible: boolean;
 }
 
 export type PlotAppState = {

@@ -43,6 +43,7 @@ const main = () => {
         },
         canvasSize: { x: width, y: height },
         canvasResolution: { x: width * 2, y: height * 2 },
+        disableWhenMouseOutside: true,
         plot: (0, line_1.linePlot)({
             mergeDuplicates: true,
             fill: {

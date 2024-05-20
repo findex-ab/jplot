@@ -39,6 +39,7 @@ export const plot = (config: PlotAppConfig) => {
     mouse: {
       position: VEC2(0, 0),
       localPosition: VEC2(0, 0),
+      intersects: false
     },
     time: {
       now: 0,
@@ -53,7 +54,8 @@ export const plot = (config: PlotAppConfig) => {
     tooltip: {
       xel: undefined,
       position: VEC2(0, 0),
-      rect: { width: 0, height: 0 }
+      rect: { width: 0, height: 0 },
+      visible: false
     },
     animationId: null,
     loading: true
@@ -71,13 +73,11 @@ export const plot = (config: PlotAppConfig) => {
 
   // -------- Listeners
 
-  const onLoadingToggle = (loading: boolean) => {
-    tooltip.state.opacity = loading ? 0 : 1;
+  const setTooltipVisible = (visible: boolean) => {
+    state.tooltip.visible = visible;
+    tooltip.state.opacity = visible ? 1 : 0;
   }
 
-  const onDisableToggle = (disabled: boolean) => {
-    tooltip.state.opacity = disabled ? 0 : 1;
-  }
 
   const onMouseMove = (event: MouseEvent) => {
     const elapsed = getTimeElapsed();
@@ -89,19 +89,17 @@ export const plot = (config: PlotAppConfig) => {
       .mul(state.dimensions.ratio)
       .sub(VEC2(rect.x, rect.y).mul(state.dimensions.ratio));
 
+    const bounds: AABB = {
+      min: VEC2(rect.x, rect.y),
+      max: VEC2(rect.x + rect.width, rect.y + rect.height)
+    };
+    state.mouse.intersects = aabbVSPoint(bounds, state.mouse.position);
 
     if (config.disableWhenMouseOutside && !state.loading && elapsed > LOADING_TIME) {
-      const bounds: AABB = {
-        min: VEC2(rect.x, rect.y),
-        max: VEC2(rect.x + rect.width, rect.y + rect.height)
-      };
-
-      if (aabbVSPoint(bounds, state.mouse.position)) {
+      if (state.mouse.intersects) {
         state.disabled = false;
-        onDisableToggle(state.disabled);
       } else {
         state.disabled = true;
-        onDisableToggle(state.disabled);
       }
     }
   };
@@ -137,7 +135,7 @@ export const plot = (config: PlotAppConfig) => {
   };
 
   const updateTooltip = () => {
-
+    setTooltipVisible(state.mouse.intersects);
 
     tooltip.state.position = state.tooltip.position;
     tooltip.state.body = state.tooltip.body;
@@ -156,7 +154,7 @@ export const plot = (config: PlotAppConfig) => {
   };
 
   const update = (time: number) => {
-    if (time - lastCheck >= 1.0) {
+    if ((time - lastCheck >= 1.0) || lastCheck <= 0) {
       everySecond();
       lastCheck = time;
     }
@@ -166,12 +164,10 @@ export const plot = (config: PlotAppConfig) => {
     if (elapsed < LOADING_TIME) {
       if (!state.loading) {
         state.loading = true;
-        onLoadingToggle(state.loading);
       }
     } else {
       if (state.loading) {
         state.loading = false;
-        onLoadingToggle(state.loading);
       }
     }
 
@@ -186,7 +182,6 @@ export const plot = (config: PlotAppConfig) => {
     const fun = state.fun = (state.fun || config.plot(args));
     fun(args);
 
-    updateTooltip();
   };
 
   const loop = (time: number) => {
@@ -198,6 +193,8 @@ export const plot = (config: PlotAppConfig) => {
     if (!state.disabled) {
       update(time);
     }
+
+    updateTooltip();
 
     return requestAnimationFrame(loop);
   };

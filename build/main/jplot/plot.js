@@ -28,6 +28,7 @@ const plot = (config) => {
         mouse: {
             position: (0, vector_1.VEC2)(0, 0),
             localPosition: (0, vector_1.VEC2)(0, 0),
+            intersects: false
         },
         time: {
             now: 0,
@@ -42,7 +43,8 @@ const plot = (config) => {
         tooltip: {
             xel: undefined,
             position: (0, vector_1.VEC2)(0, 0),
-            rect: { width: 0, height: 0 }
+            rect: { width: 0, height: 0 },
+            visible: false
         },
         animationId: null,
         loading: true
@@ -56,11 +58,9 @@ const plot = (config) => {
         return (now - state.time.started) / 1000;
     };
     // -------- Listeners
-    const onLoadingToggle = (loading) => {
-        tooltip.state.opacity = loading ? 0 : 1;
-    };
-    const onDisableToggle = (disabled) => {
-        tooltip.state.opacity = disabled ? 0 : 1;
+    const setTooltipVisible = (visible) => {
+        state.tooltip.visible = visible;
+        tooltip.state.opacity = visible ? 1 : 0;
     };
     const onMouseMove = (event) => {
         const elapsed = getTimeElapsed();
@@ -70,18 +70,17 @@ const plot = (config) => {
         state.mouse.localPosition = state.mouse.position
             .mul(state.dimensions.ratio)
             .sub((0, vector_1.VEC2)(rect.x, rect.y).mul(state.dimensions.ratio));
+        const bounds = {
+            min: (0, vector_1.VEC2)(rect.x, rect.y),
+            max: (0, vector_1.VEC2)(rect.x + rect.width, rect.y + rect.height)
+        };
+        state.mouse.intersects = (0, aabb_1.aabbVSPoint)(bounds, state.mouse.position);
         if (config.disableWhenMouseOutside && !state.loading && elapsed > LOADING_TIME) {
-            const bounds = {
-                min: (0, vector_1.VEC2)(rect.x, rect.y),
-                max: (0, vector_1.VEC2)(rect.x + rect.width, rect.y + rect.height)
-            };
-            if ((0, aabb_1.aabbVSPoint)(bounds, state.mouse.position)) {
+            if (state.mouse.intersects) {
                 state.disabled = false;
-                onDisableToggle(state.disabled);
             }
             else {
                 state.disabled = true;
-                onDisableToggle(state.disabled);
             }
         }
     };
@@ -113,6 +112,7 @@ const plot = (config) => {
         state.dimensions.ratioInverse = (0, vector_1.VEC2)(1.0 / rx, 1.0 / ry);
     };
     const updateTooltip = () => {
+        setTooltipVisible(state.mouse.intersects);
         tooltip.state.position = state.tooltip.position;
         tooltip.state.body = state.tooltip.body;
         if (tooltip.el) {
@@ -126,7 +126,7 @@ const plot = (config) => {
         updateDimensions();
     };
     const update = (time) => {
-        if (time - lastCheck >= 1.0) {
+        if ((time - lastCheck >= 1.0) || lastCheck <= 0) {
             everySecond();
             lastCheck = time;
         }
@@ -134,13 +134,11 @@ const plot = (config) => {
         if (elapsed < LOADING_TIME) {
             if (!state.loading) {
                 state.loading = true;
-                onLoadingToggle(state.loading);
             }
         }
         else {
             if (state.loading) {
                 state.loading = false;
-                onLoadingToggle(state.loading);
             }
         }
         const args = {
@@ -152,7 +150,6 @@ const plot = (config) => {
         };
         const fun = state.fun = (state.fun || config.plot(args));
         fun(args);
-        updateTooltip();
     };
     const loop = (time) => {
         time /= 1000.0;
@@ -162,6 +159,7 @@ const plot = (config) => {
         if (!state.disabled) {
             update(time);
         }
+        updateTooltip();
         return requestAnimationFrame(loop);
     };
     const start = () => {
