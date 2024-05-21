@@ -170,6 +170,7 @@ const plot = (config) => {
         state.animationId = loop(0);
     };
     const init = () => {
+        setTooltipVisible(false);
         document.addEventListener('mousemove', onMouseMove);
         start();
     };

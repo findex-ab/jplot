@@ -208,6 +208,8 @@ export const plot = (config: PlotAppConfig) => {
   };
 
   const init = () => {
+    setTooltipVisible(false);
+
     document.addEventListener('mousemove', onMouseMove);
     start();
   };
