@@ -50,6 +50,23 @@ export const plot = (config) => {
         state,
         setState,
     };
+    const getPlotArgs = () => {
+        const args = {
+            state: state,
+            config: config,
+            canvas: state.canvas,
+            hooks: config.hooks,
+            app: app
+        };
+        return args;
+    };
+    const reloadCurrent = () => {
+        const current = state.current;
+        if (current && current.reload) {
+            const args = getPlotArgs();
+            current.reload(args);
+        }
+    };
     const getTimeElapsed = () => {
         const now = performance.now();
         return (now - state.time.started) / 1000;
@@ -136,17 +153,12 @@ export const plot = (config) => {
         else {
             if (state.loading) {
                 state.loading = false;
+                reloadCurrent();
             }
         }
-        const args = {
-            state: state,
-            config: config,
-            canvas: state.canvas,
-            hooks: config.hooks,
-            app: app
-        };
-        const fun = state.fun = (state.fun || config.plot(args));
-        fun(args);
+        const args = getPlotArgs();
+        const current = state.current = (state.current || config.plot(args));
+        current.update(args);
     };
     const loop = (time) => {
         time /= 1000.0;
@@ -170,10 +182,13 @@ export const plot = (config) => {
         setTooltipVisible(false);
         document.addEventListener('mousemove', onMouseMove);
         start();
+        queueMicrotask(() => {
+            reloadCurrent();
+        });
     };
     const destroy = () => {
         document.removeEventListener('mousemove', onMouseMove);
     };
     init();
-    return { destroy, state, root };
+    return { destroy, state, root, reload: reloadCurrent };
 };

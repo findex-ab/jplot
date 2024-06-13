@@ -1,16 +1,13 @@
-import { VEC2, Vector } from './math/vector';
+import { VEC2 } from './math/vector';
 import {
   PlotApp,
   PlotArguments,
   type PlotAppConfig,
   type PlotAppState,
-  type PlotConfig,
-  type PlotFunction,
 } from './types';
 import { isNumber } from './utils/is';
 import { Tooltip } from './components/tooltip';
-import { mount, X } from 'xel';
-import { TooltipProps } from './components/tooltip/types';
+import { X } from 'xel';
 import { useState } from './utils/reactivity/useState';
 import { clamp } from './math/clamp';
 import { AABB, aabbVSPoint } from './utils/geometry/aabb';
@@ -65,6 +62,25 @@ export const plot = (config: PlotAppConfig) => {
     state,
     setState,
   };
+
+  const getPlotArgs = (): PlotArguments => {
+    const args: PlotArguments = {
+      state: state,
+      config: config,
+      canvas: state.canvas,
+      hooks: config.hooks,
+      app: app
+    };
+    return args;
+  }
+
+  const reloadCurrent = () => {
+    const current = state.current;
+    if (current && current.reload) {
+      const args = getPlotArgs();
+      current.reload(args);
+    }
+  }
 
   const getTimeElapsed = () => {
     const now = performance.now();
@@ -168,20 +184,13 @@ export const plot = (config: PlotAppConfig) => {
     } else {
       if (state.loading) {
         state.loading = false;
+        reloadCurrent();
       }
     }
 
-    const args: PlotArguments = {
-      state: state,
-      config: config,
-      canvas: state.canvas,
-      hooks: config.hooks,
-      app: app
-    };
-
-    const fun = state.fun = (state.fun || config.plot(args));
-    fun(args);
-
+    const args = getPlotArgs();
+    const current = state.current  = (state.current || config.plot(args));
+    current.update(args);
   };
 
   const loop = (time: number) => {
@@ -203,7 +212,6 @@ export const plot = (config: PlotAppConfig) => {
     if (state.animationId !== null) return;
     state.time.started = performance.now();
     state.time.lastFrame = state.time.started;
-
     state.animationId = loop(0);
   };
 
@@ -212,6 +220,10 @@ export const plot = (config: PlotAppConfig) => {
 
     document.addEventListener('mousemove', onMouseMove);
     start();
+
+    queueMicrotask(() => {
+      reloadCurrent();
+    })
   };
 
   const destroy = () => {
@@ -220,5 +232,5 @@ export const plot = (config: PlotAppConfig) => {
 
   init();
 
-  return { destroy, state, root };
+  return { destroy, state, root, reload: reloadCurrent };
 };

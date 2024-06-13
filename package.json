@@ -1,6 +1,6 @@
 {
   "name": "jplot",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "plot library",
   "bin": {
     "jplot": "./bin/jplot"

@@ -9,4 +9,5 @@ export declare const plot: (config: PlotAppConfig) => {
         };
         children: (HTMLCanvasElement | import("xel").XElement<import("./components/tooltip/types").TooltipPropsInternal, import("./components/tooltip/types").TooltipPropsInternal>)[];
     }, import("xel").XAnyObject>;
+    reload: () => void;
 };

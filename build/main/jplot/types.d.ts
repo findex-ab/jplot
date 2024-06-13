@@ -18,7 +18,11 @@ export type PlotArguments = {
     app: PlotApp;
 };
 export type PlotUpdateFunction = (args: PlotArguments) => void;
-export type PlotFunction = (args: PlotArguments) => PlotUpdateFunction;
+export type PlotReturn = {
+    update: PlotUpdateFunction;
+    reload?: PlotUpdateFunction;
+};
+export type PlotFunction = (args: PlotArguments) => PlotReturn;
 export type PlotAppConfigHooks = {
     onDataHover: (app: PlotApp, key: string, value: number, index: number) => void;
 };
@@ -71,7 +75,7 @@ export type PlotAppState = {
     tooltip: PlotAppStateTooltip;
     disabled: boolean;
     animationId: number | null;
-    fun?: PlotUpdateFunction;
+    current?: PlotReturn;
     loading: boolean;
 };
 export type PlotApp = {
